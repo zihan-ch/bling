@@ -66,11 +66,15 @@ export type NonFnProps<T> = {
 export type AnySplitFn = (...args: any[]) => any
 export type ModuleObj = any
 
+export type PreloadFn<T = any> = () => T
+
 export type CreateSplitFn = <T extends AnySplitFn>(fn: T) => SplitFn<T>
 
 export type CreateLazyFn = <T extends AnySplitFn>(fn: T) => T
 
 export type CreateImportFn = <T extends any>(fn: T) => Promise<T>
+
+export type CreatePreloadFn = <T extends any>(fn: PreloadFn<T>) => Awaited<T>
 
 export type SplitFn<T extends AnySplitFn> = (
   ...args: Parameters<T>

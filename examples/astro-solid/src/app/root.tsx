@@ -1,52 +1,72 @@
-import { server$, secret$, import$ } from '@tanstack/bling'
+import {
+  server$,
+  secret$,
+  import$,
+  preload$,
+  getPreloaded,
+} from '@tanstack/bling'
+import fs from 'fs'
 import { createSignal, lazy, Suspense, useContext } from 'solid-js'
 import { HydrationScript, NoHydration } from 'solid-js/web'
 import { manifestContext } from './manifest'
-import { secret } from './server.secret$'
 
-const sayHello = server$(() => console.log('Hello world'))
+import { dirname, join } from 'path'
+import { fileURLToPath } from 'url'
 
-const LazyHello3 = lazy(() =>
-  import$({
-    default: () => {
-      return (
-        <>
-          <button onClick={() => sayHello()}>Split up</button>
-        </>
-      )
-    },
-  }),
+const fileUrl = secret$(
+  join(dirname(fileURLToPath(import.meta.url)), 'index.txt'),
 )
+const write = server$((content: string) => fs.writeFileSync(fileUrl, content))
+const read = server$(() => fs.readFileSync(fileUrl).toString())
+const preloadedContent = preload$(() => fs.readFileSync(fileUrl).toString())
 
-const inlineSecret = secret$('I am an inline server secret!')
+const Example = () => {
+  const [content, setContent] = createSignal(preloadedContent)
+  const [serverContent, setServerContent] = createSignal('')
+
+  return (
+    <>
+      <input
+        value={content()}
+        onInput={(e) => setContent((e.target as any).value)}
+      ></input>
+      <br />
+      <button onClick={async () => await write(content())}>
+        Write that on the server file 'index.txt'
+      </button>
+      <br />
+      <button onClick={async () => setServerContent((await read()).toString())}>
+        Read from the file on the server
+      </button>
+      <p>{serverContent()}</p>
+    </>
+  )
+}
+
+const preloaded = getPreloaded()
 
 export function App() {
-  console.log(
-    'Do you know the inline server secret?',
-    inlineSecret ?? 'Not even.',
-  )
-
-  console.log(
-    'Do you know the server secret in server.secret.ts?',
-    secret ?? 'Nope',
-  )
-
-  const [state, setState] = createSignal(0)
-
   return (
     <html>
       <head>
         <title>Hello World</title>
+        <PreloadedData />
       </head>
       <body>
-        <div>Hello world</div>
-        <button onClick={() => setState((s) => s + 1)}>{state}</button>
-        <Suspense fallback={'loading'}>
-          <LazyHello3 />
-        </Suspense>
+        <Example />
         <Scripts />
       </body>
     </html>
+  )
+}
+
+function PreloadedData() {
+  return (
+    <NoHydration>
+      <script type="application/json" id="preloaded" $ServerOnly>
+        {preloaded}
+      </script>
+    </NoHydration>
   )
 }
 

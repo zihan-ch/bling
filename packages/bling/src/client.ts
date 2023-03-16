@@ -108,6 +108,14 @@ const fetchMethods: CreateClientFetcherMethods = {
 export const fetch$: ClientFetchFn = Object.assign(fetchImpl, fetchMethods)
 export const server$: ClientFetchFn = fetch$
 
+const preloaded = JSON.parse(
+  document.getElementById('preloaded')?.innerHTML ?? 'null',
+)
+export const preload$ = (key: string) => {
+  return preloaded[key as any]
+}
+export const getPreloaded = () => null
+
 export const split$: CreateSplitFn = (_fn) => {
   throw new Error('Should be compiled away')
 }

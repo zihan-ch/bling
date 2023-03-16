@@ -26,6 +26,8 @@ import type {
   CreateSecretFn,
   CreateImportFn,
   CreateLazyFn,
+  CreatePreloadFn,
+  PreloadFn,
 } from './types'
 
 export * from './utils/utils'
@@ -312,4 +314,26 @@ export const secret$: CreateSecretFn = (_value) => {
 
 export const import$: CreateImportFn = (_fn) => {
   throw new Error('Should be compiled away')
+}
+
+export let preloaded = new Map<string, any>()
+
+const preloadMethods = {
+  createPreload: (fn: PreloadFn) => {
+    return fn
+  },
+  add: async (fn: PreloadFn, key: string) => {
+    preloaded.set(key, await Promise.resolve(fn()))
+  },
+}
+
+export const preload$: CreatePreloadFn = Object.assign(
+  ((key: string) => {
+    return preloaded.get(key)
+  }) as any,
+  preloadMethods,
+)
+
+export const getPreloaded = (): string => {
+  return JSON.stringify(Object.fromEntries(preloaded.entries()))
 }

@@ -111,6 +111,9 @@ export async function compileFile(opts: {
                           } else if (path.node.callee.name === 'server$') {
                             // Fetch RPCs
                             transformServer$(path, state)
+                          } else if (path.node.callee.name === 'preload$') {
+                            // Preload
+                            transformPreload$(path, state)
                           } else if (path.node.callee.name === 'import$') {
                             // Server-only expressions
                             transformImport$(path, state)
@@ -456,6 +459,34 @@ function transformFetch$(path: babel.NodePath<t.CallExpression>, state: State) {
     )
   }
   path.replaceWith(t.identifier(`$$server_module${serverIndex}`))
+}
+
+function transformPreload$(
+  path: babel.NodePath<t.CallExpression>,
+  state: State,
+) {
+  const preloadFn = path.get('arguments')[0]
+  let program = path.findParent((p) => t.isProgram(p))
+  let statement = path.findParent((p) => {
+    const body = program!.get('body') as babel.NodePath<babel.types.Node>[]
+
+    return body.includes(p)
+  })!
+
+  let serverIndex = state.serverIndex++
+
+  if (state.opts.ssr) {
+    statement.insertBefore(
+      template.smart(
+        `
+const $$preload_fn${serverIndex} = preload$.createPreload(%%source%%);
+await preload$.add($$preload_fn${serverIndex}, \`\${${serverIndex}}\`);`,
+      )({ source: preloadFn.node }),
+    )
+    preloadFn.replaceWith(template.expression(`"anyway"`)())
+  } else {
+    preloadFn.replaceWith(template.expression(`${serverIndex}`)())
+  }
 }
 
 function transformSplit$(path: babel.NodePath<t.CallExpression>, state: State) {
